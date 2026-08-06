@@ -1,0 +1,4 @@
+import { z } from "zod"; import { db } from "@/lib/db"; import { fail, ok, parseJson } from "@/lib/api"; import { requireAdmin } from "@/lib/auth/require-user"; import { audit } from "@/lib/audit";
+const schema = z.object({ incorrectTerm: z.string().min(1), correctedTerm: z.string().min(1), category: z.string(), cropId: z.string().nullable().optional(), isActive: z.boolean().default(true) });
+export async function GET() { try { await requireAdmin(); return ok(await db.agriculturalTerm.findMany({ include: { crop: true } })); } catch (e) { return fail(e); } }
+export async function POST(request: Request) { try { const user = await requireAdmin(); const term = await db.agriculturalTerm.create({ data: schema.parse(await parseJson(request)) }); await audit({ userId: user.id, action: "CREATE", entityType: "AgriculturalTerm", entityId: term.id, after: term }); return ok(term, 201); } catch (e) { return fail(e); } }

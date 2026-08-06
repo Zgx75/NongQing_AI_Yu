@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/app/data/app.db
+      SESSION_SECRET: change-this-docker-secret-before-production
+      AI_PROVIDER: mock
+      TRANSCRIPTION_PROVIDER: mock
+      UPLOAD_PROVIDER: local
+      OPEN_DATA_MODE: mock
+    volumes:
+      - nongqing_data:/app/data
+      - nongqing_uploads:/app/uploads
+volumes:
+  nongqing_data:
+  nongqing_uploads:

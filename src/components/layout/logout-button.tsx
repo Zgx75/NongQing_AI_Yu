@@ -1,0 +1,2 @@
+"use client"; import { useRouter } from "next/navigation"; import type { ReactNode } from "react";
+export function LogoutButton({children}:{children:ReactNode}) { const router=useRouter(); return <button className="mt-2 flex min-h-12 w-full items-center gap-2 rounded-xl text-[#7f2e27]" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});router.push("/");router.refresh();}}>{children}</button>; }

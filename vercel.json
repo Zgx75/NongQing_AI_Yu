@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "corepack pnpm install --frozen-lockfile",
+  "buildCommand": "corepack pnpm vercel-build",
+  "functions": {
+    "src/app/api/ai/**": { "maxDuration": 60 },
+    "src/app/api/uploads/**": { "maxDuration": 60 }
+  }
+}

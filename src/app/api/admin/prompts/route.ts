@@ -1,0 +1,4 @@
+import { z } from "zod"; import { db } from "@/lib/db"; import { fail, ok, parseJson } from "@/lib/api"; import { requireAdmin } from "@/lib/auth/require-user"; import { audit } from "@/lib/audit";
+const schema = z.object({ key: z.string(), name: z.string(), category: z.string(), systemPrompt: z.string(), userPromptTemplate: z.string(), version: z.number().int().positive(), isActive: z.boolean().default(true) });
+export async function GET() { try { await requireAdmin(); return ok(await db.promptTemplate.findMany({ orderBy: [{ key: "asc" }, { version: "desc" }] })); } catch (e) { return fail(e); } }
+export async function POST(request: Request) { try { const user = await requireAdmin(); const prompt = await db.promptTemplate.create({ data: schema.parse(await parseJson(request)) }); await audit({ userId: user.id, action: "CREATE", entityType: "PromptTemplate", entityId: prompt.id, after: prompt }); return ok(prompt, 201); } catch (e) { return fail(e); } }

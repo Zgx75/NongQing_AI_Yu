@@ -1,0 +1,2 @@
+import { describe,expect,it } from "vitest"; import { onlyConfirmedData,validateBrandClaims } from "@/lib/ai/safety-validator";
+describe("AI 安全驗證",()=>{it("攔截未佐證宣稱",()=>expect(validateBrandClaims("全臺最佳無毒蔬菜",[])).toEqual(expect.arrayContaining(["無毒","全臺最佳"])));it("只讓人工確認欄位進入生成",()=>{const safe=onlyConfirmedData({crop:{value:"茶",source:"USER_INPUT",confirmed:true},weather:{value:"晴",source:"AI_INFERENCE",confirmed:false}});expect(safe).toHaveProperty("crop");expect(safe).not.toHaveProperty("weather")})});

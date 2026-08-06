@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FARMER
+  COOPERATIVE
+  ADMIN
+}
+
+enum RecordStatus {
+  DRAFT
+  NEEDS_CONFIRMATION
+  CONFIRMED
+  ARCHIVED
+}
+
+enum ContentStatus {
+  DRAFT
+  REVIEWED
+  ARCHIVED
+}
+
+enum EvidenceStatus {
+  SUCCESS
+  FAILED
+  MOCK
+  NOT_AVAILABLE
+}
+
+model User {
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  role              Role               @default(FARMER)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessions          Session[]
+  farms             Farm[]
+  memberships       FarmMember[]
+  records           FarmRecord[]       @relation("RecordCreator")
+  confirmations     FarmRecord[]       @relation("RecordConfirmer")
+  versions          RecordVersion[]
+  contents          GeneratedContent[]
+  aiLogs            AIRequestLog[]
+  auditLogs         AuditLog[]
+  evidenceSnapshots EvidenceSnapshot[] @relation("EvidenceCreator")
+  trustedWebSources TrustedWebSource[]
+  qaConversations   QaConversation[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Farm {
+  id                  String             @id @default(cuid())
+  ownerId             String
+  name                String
+  county              String
+  district            String
+  locationDescription String
+  introduction        String             @default("")
+  philosophy          String             @default("")
+  farmingMethod       String             @default("")
+  certificationInfo   String             @default("")
+  contactName         String             @default("")
+  archivedAt          DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  owner               User               @relation(fields: [ownerId], references: [id])
+  members             FarmMember[]
+  plots               Plot[]
+  records             FarmRecord[]
+  brandProfile        BrandProfile?
+  generatedContents   GeneratedContent[]
+
+  @@index([ownerId])
+}
+
+model FarmMember {
+  id         String @id @default(cuid())
+  farmId     String
+  userId     String
+  permission String @default("VIEW")
+  farm       Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, userId])
+}
+
+model Plot {
+  id                  String       @id @default(cuid())
+  farmId              String
+  name                String
+  area                Float?
+  areaUnit            String?
+  locationDescription String       @default("")
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  farm                Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  plantings           Planting[]
+  records             FarmRecord[]
+
+  @@index([farmId])
+}
+
+model Crop {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  category  String
+  varieties CropVariety[]
+  plantings Planting[]
+  terms     AgriculturalTerm[]
+}
+
+model CropVariety {
+  id        String     @id @default(cuid())
+  cropId    String
+  name      String
+  crop      Crop       @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  plantings Planting[]
+
+  @@unique([cropId, name])
+}
+
+model Planting {
+  id                String       @id @default(cuid())
+  plotId            String
+  cropId            String
+  cropVarietyId     String?
+  plantedAt         DateTime?
+  expectedHarvestAt DateTime?
+  status            String       @default("ACTIVE")
+  plot              Plot         @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  crop              Crop         @relation(fields: [cropId], references: [id])
+  cropVariety       CropVariety? @relation(fields: [cropVarietyId], references: [id])
+  records           FarmRecord[]
+}
+
+model FarmRecord {
+  id                 String             @id @default(cuid())
+  farmId             String
+  plotId             String?
+  plantingId         String?
+  creatorId          String
+  recordDate         DateTime?
+  actionType         String?
+  rawInput           String
+  transcript         String?
+  structuredDataJson String
+  content            String             @default("")
+  status             RecordStatus       @default(NEEDS_CONFIRMATION)
+  confirmedBy        String?
+  confirmedAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  farm               Farm               @relation(fields: [farmId], references: [id])
+  plot               Plot?              @relation(fields: [plotId], references: [id])
+  planting           Planting?          @relation(fields: [plantingId], references: [id])
+  creator            User               @relation("RecordCreator", fields: [creatorId], references: [id])
+  confirmer          User?              @relation("RecordConfirmer", fields: [confirmedBy], references: [id])
+  versions           RecordVersion[]
+  attachments        Attachment[]
+  evidence           EvidenceSnapshot[]
+
+  @@index([farmId, recordDate])
+}
+
+model RecordVersion {
+  id                 String     @id @default(cuid())
+  farmRecordId       String
+  version            Int
+  content            String
+  structuredDataJson String
+  editedBy           String
+  createdAt          DateTime   @default(now())
+  farmRecord         FarmRecord @relation(fields: [farmRecordId], references: [id], onDelete: Cascade)
+  editor             User       @relation(fields: [editedBy], references: [id])
+
+  @@unique([farmRecordId, version])
+}
+
+model Attachment {
+  id           String      @id @default(cuid())
+  farmRecordId String?
+  fileName     String
+  mimeType     String
+  fileSize     Int
+  storageKey   String
+  createdAt    DateTime    @default(now())
+  farmRecord   FarmRecord? @relation(fields: [farmRecordId], references: [id], onDelete: Cascade)
+}
+
+model EvidenceSnapshot {
+  id             String            @id @default(cuid())
+  farmRecordId   String?
+  createdById    String?
+  webSourceId    String?
+  provider       String
+  sourceName     String
+  sourceTitle    String?
+  sourceUrl      String?
+  sourceExcerpt  String?
+  relevanceScore Float?
+  queryJson      String
+  responseJson   String
+  summary        String
+  fetchedAt      DateTime          @default(now())
+  status         EvidenceStatus
+  errorMessage   String?
+  cacheHit       Boolean           @default(false)
+  farmRecord     FarmRecord?       @relation(fields: [farmRecordId], references: [id], onDelete: Cascade)
+  creator        User?             @relation("EvidenceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  webSource      TrustedWebSource? @relation(fields: [webSourceId], references: [id], onDelete: SetNull)
+
+  @@index([createdById, fetchedAt])
+  @@index([farmRecordId, fetchedAt])
+}
+
+model TrustedWebSource {
+  id          String             @id @default(cuid())
+  name        String
+  url         String             @unique
+  domain      String
+  description String             @default("")
+  searchScope String             @default("PAGE")
+  isActive    Boolean            @default(true)
+  createdById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   User               @relation(fields: [createdById], references: [id])
+  evidence    EvidenceSnapshot[]
+
+  @@index([isActive])
+}
+
+model QaConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  QaMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model QaMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  citationsJson  String         @default("[]")
+  provider       String         @default("")
+  createdAt      DateTime       @default(now())
+  conversation   QaConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model BrandProfile {
+  id                String   @id @default(cuid())
+  farmId            String   @unique
+  brandName         String
+  storyMaterials    String   @default("")
+  origin            String   @default("")
+  farmingMethod     String   @default("")
+  philosophy        String   @default("")
+  familyHistory     String   @default("")
+  sustainability    String   @default("")
+  productFeatures   String   @default("")
+  certificationInfo String   @default("")
+  contactInfo       String   @default("")
+  tone              String   @default("樸實真誠")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  farm              Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+}
+
+model GeneratedContent {
+  id             String                    @id @default(cuid())
+  farmId         String
+  creatorId      String
+  type           String
+  targetAudience String
+  tone           String
+  length         String
+  sourceDataJson String
+  title          String
+  body           String
+  callToAction   String
+  hashtagsJson   String
+  status         ContentStatus             @default(DRAFT)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  farm           Farm                      @relation(fields: [farmId], references: [id])
+  creator        User                      @relation(fields: [creatorId], references: [id])
+  versions       GeneratedContentVersion[]
+}
+
+model GeneratedContentVersion {
+  id                 String           @id @default(cuid())
+  generatedContentId String
+  version            Int
+  title              String
+  body               String
+  callToAction       String
+  hashtagsJson       String
+  promptVersionId    String?
+  modelName          String
+  createdAt          DateTime         @default(now())
+  generatedContent   GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+
+  @@unique([generatedContentId, version])
+}
+
+model PromptTemplate {
+  id                 String   @id @default(cuid())
+  key                String
+  name               String
+  category           String
+  systemPrompt       String
+  userPromptTemplate String
+  version            Int
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([key, version])
+}
+
+model AIRequestLog {
+  id                 String   @id @default(cuid())
+  userId             String?
+  provider           String
+  modelName          String
+  requestType        String
+  promptVersion      String
+  inputJson          String
+  rawResponse        String
+  parsedResponseJson String?
+  tokenUsageJson     String?
+  status             String
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  user               User?    @relation(fields: [userId], references: [id])
+}
+
+model AgriculturalTerm {
+  id            String  @id @default(cuid())
+  incorrectTerm String
+  correctedTerm String
+  category      String
+  cropId        String?
+  isActive      Boolean @default(true)
+  crop          Crop?   @relation(fields: [cropId], references: [id])
+
+  @@unique([incorrectTerm, correctedTerm])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  beforeJson String?
+  afterJson  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+}

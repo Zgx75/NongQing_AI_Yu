@@ -1,0 +1,2 @@
+const cache = new Map<string, { expires: number; data: unknown }>();
+export async function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<{ data: T; cacheHit: boolean }> { const hit = cache.get(key); if (hit && hit.expires > Date.now()) return { data: hit.data as T, cacheHit: true }; const data = await load(); cache.set(key, { data, expires: Date.now() + ttl }); return { data, cacheHit: false }; }

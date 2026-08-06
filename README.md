@@ -137,6 +137,21 @@ GEMINI_MODEL=your-enabled-model-name
 
 本專案目前以 Vercel、Neon PostgreSQL 與 private Vercel Blob 部署。雲端 build 會執行 `pnpm vercel-build`，以 PostgreSQL schema 重新產生 Prisma client。
 
+GitHub repository：[Zgx75/NongQing_AI_Yu](https://github.com/Zgx75/NongQing_AI_Yu)
+
+- 推送到 `main`：Vercel 自動建立正式部署。
+- 推送其他分支：Vercel 建立 Preview Deployment。
+- Vercel 環境變數不會寫入 GitHub；`.env`、`.env.local` 與 `.vercel` 已被 `.gitignore` 排除。
+- 若變更 Prisma schema，仍須先審核並更新正式 Neon schema；單純推送程式不會自動執行破壞性的資料庫變更。
+
+日常更新流程：
+
+```bash
+git add .
+git commit -m "說明本次修改"
+git push origin main
+```
+
 ```bash
 vercel link
 vercel blob create-store nongqing-uploads --access private --yes

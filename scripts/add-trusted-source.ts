@@ -12,6 +12,7 @@ async function main() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const name = process.env.TRUSTED_SOURCE_NAME?.trim();
   const inputUrl = process.env.TRUSTED_SOURCE_URL?.trim();
+  const description = process.env.TRUSTED_SOURCE_DESCRIPTION?.trim() || "管理員核准的可信農業網站";
   const searchScope = process.env.TRUSTED_SOURCE_SCOPE === "PAGE" ? "PAGE" : "SITE";
   if (!email || !name || !inputUrl) throw new Error("請設定 ADMIN_EMAIL、TRUSTED_SOURCE_NAME 與 TRUSTED_SOURCE_URL。");
   const parsed = new URL(inputUrl);
@@ -22,8 +23,8 @@ async function main() {
   if (!admin || admin.role !== "ADMIN") throw new Error("找不到指定的管理員帳號。");
   const existing = await db.trustedWebSource.findUnique({ where: { url } });
   const source = existing
-    ? await db.trustedWebSource.update({ where: { id: existing.id }, data: { name, domain: parsed.hostname.toLowerCase(), searchScope, isActive: true } })
-    : await db.trustedWebSource.create({ data: { name, url, domain: parsed.hostname.toLowerCase(), description: "農業知識入口網的農業知識庫", searchScope, isActive: true, createdById: admin.id } });
+    ? await db.trustedWebSource.update({ where: { id: existing.id }, data: { name, domain: parsed.hostname.toLowerCase(), description, searchScope, isActive: true } })
+    : await db.trustedWebSource.create({ data: { name, url, domain: parsed.hostname.toLowerCase(), description, searchScope, isActive: true, createdById: admin.id } });
   await db.auditLog.create({ data: { userId: admin.id, action: existing ? "UPDATE" : "CREATE", entityType: "TrustedWebSource", entityId: source.id, beforeJson: existing ? JSON.stringify(existing) : undefined, afterJson: JSON.stringify(source) } });
   console.log(JSON.stringify({ id: source.id, name: source.name, url: source.url, searchScope: source.searchScope, isActive: source.isActive }));
 }

@@ -1,5 +1,6 @@
 import { fetchPublicPage, isWithinSource } from "./url-policy";
 import { bestExcerpts, parseHtmlDocument, queryTerms, relevanceScore } from "./html-search";
+import { sourceSearchEntryUrl } from "./source-search";
 
 export type TrustedSourceInput = { id: string; name: string; url: string; domain: string; description: string; searchScope: string };
 export type EvidenceSearchResult = { sourceId: string; sourceName: string; title: string; url: string; excerpt: string; relevanceScore: number; provider: string };
@@ -14,7 +15,7 @@ async function searchPage(url: string, source: TrustedSourceInput, question: str
 async function directSearchSource(source: TrustedSourceInput, question: string) {
   const warnings: string[] = [];
   try {
-    const landing = await searchPage(source.url, source, question);
+    const landing = await searchPage(sourceSearchEntryUrl(source, question), source, question);
     const pages = [landing];
     if (source.searchScope === "SITE") {
       const terms = queryTerms(question);

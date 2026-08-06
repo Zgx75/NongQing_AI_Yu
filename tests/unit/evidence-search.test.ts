@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bestExcerpts, parseHtmlDocument } from "@/lib/evidence/html-search";
+import { sourceSearchEntryUrl, sourceSearchKeyword } from "@/lib/evidence/source-search";
 import { isWithinSource, parsePublicWebUrl } from "@/lib/evidence/url-policy";
 
 describe("可信網站搜尋", () => {
@@ -22,5 +23,15 @@ describe("可信網站搜尋", () => {
   it("拒絕本機與私人網址", () => {
     expect(() => parsePublicWebUrl("http://localhost:3000/admin")).toThrow();
     expect(() => parsePublicWebUrl("http://192.168.1.5/internal")).toThrow();
+  });
+
+  it("將農業知識入口網轉成站內知識庫搜尋網址", () => {
+    const source = { url: "https://kmweb.moa.gov.tw/knowledgebase.php?func=0", domain: "kmweb.moa.gov.tw", searchScope: "SITE" };
+    const url = new URL(sourceSearchEntryUrl(source, "請問番茄結果期要怎麼施肥？"));
+    expect(url.pathname).toBe("/knowledgebase.php");
+    expect(url.searchParams.get("func")).toBe("0");
+    expect(url.searchParams.get("type")).toBe("0");
+    expect(url.searchParams.get("keyword")).toBe("番茄");
+    expect(sourceSearchKeyword("如何改善土壤酸化？")).toBe("土壤");
   });
 });

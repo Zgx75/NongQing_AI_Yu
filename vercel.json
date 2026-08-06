@@ -5,6 +5,8 @@
   "buildCommand": "corepack pnpm vercel-build",
   "functions": {
     "src/app/api/ai/**": { "maxDuration": 60 },
+    "src/app/api/qa/**": { "maxDuration": 60 },
+    "src/app/api/evidence/**": { "maxDuration": 60 },
     "src/app/api/uploads/**": { "maxDuration": 60 }
   }
 }

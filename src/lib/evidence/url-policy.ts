@@ -1,9 +1,12 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { AppError } from "@/lib/api";
+import { cached } from "@/lib/open-data/cache";
 
 const MAX_RESPONSE_BYTES = 1_500_000;
 const MAX_REDIRECTS = 3;
+const FETCH_TIMEOUT_MS = 20_000;
+const PAGE_CACHE_TTL_MS = 5 * 60_000;
 
 function isPrivateIp(address: string) {
   const value = address.toLowerCase();
@@ -50,15 +53,15 @@ export function isWithinSource(candidate: string, source: { url: string; domain:
   return url.hostname.toLowerCase() === source.domain.toLowerCase();
 }
 
-export async function fetchPublicPage(input: string, allowedDomain: string) {
+async function fetchPublicPageAttempt(input: string, allowedDomain: string) {
   let url = parsePublicWebUrl(input);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
     if (url.hostname.toLowerCase() !== allowedDomain.toLowerCase()) throw new AppError("SOURCE_REDIRECT_BLOCKED", "來源重新導向到未核准的網域。", 502);
     await assertPublicDns(url);
     const response = await fetch(url, {
       redirect: "manual",
-      signal: AbortSignal.timeout(8_000),
-      headers: { "accept": "text/html,application/xhtml+xml,text/plain;q=0.9", "user-agent": "NongQingEvidenceAgent/1.0 (+https://nong-qing-ai-yu.vercel.app)" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { "accept": "text/html,application/xhtml+xml,text/plain;q=0.9", "accept-language": "zh-TW,zh;q=0.9,en;q=0.5", "user-agent": "NongQingEvidenceAgent/1.0 (+https://nong-qing-ai-yu.vercel.app)" },
     });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("location");
@@ -76,4 +79,22 @@ export async function fetchPublicPage(input: string, allowedDomain: string) {
     return { url: url.toString(), html: new TextDecoder().decode(buffer), contentType };
   }
   throw new AppError("SOURCE_REDIRECT_LIMIT", "來源重新導向次數過多。", 502);
+}
+
+export async function fetchPublicPage(input: string, allowedDomain: string) {
+  const normalized = parsePublicWebUrl(input).toString();
+  const result = await cached(`trusted-page:${normalized}`, PAGE_CACHE_TTL_MS, async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try { return await fetchPublicPageAttempt(normalized, allowedDomain); }
+      catch (error) {
+        if (error instanceof AppError) throw error;
+        lastError = error;
+        if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 400));
+      }
+    }
+    const timedOut = lastError instanceof Error && (lastError.name === "TimeoutError" || /aborted|timeout/i.test(lastError.message));
+    throw new AppError(timedOut ? "SOURCE_TIMEOUT" : "SOURCE_FETCH_FAILED", timedOut ? "來源網站回應較慢，重試後仍逾時，請稍後再試。" : "來源網站暫時無法連線，請稍後再試。", 502);
+  });
+  return result.data;
 }

@@ -112,8 +112,9 @@ GEMINI_MODEL=your-enabled-model-name
 ### 語音辨識
 
 - `TRANSCRIPTION_PROVIDER=mock`：回傳固定示範辨識結果。
+- `TRANSCRIPTION_PROVIDER=gemini`：使用既有 `GEMINI_API_KEY` 將錄音轉為文字；模型預設沿用 `GEMINI_MODEL`，也可用 `GEMINI_TRANSCRIPTION_MODEL` 覆寫。
 - `TRANSCRIPTION_PROVIDER=external`：將 multipart `file` 送到 `TRANSCRIPTION_API_URL`，可用 `TRANSCRIPTION_API_KEY` Bearer 驗證。
-- 辨識後會依啟用的 `AgriculturalTerm` 修正，並同時回傳修正前文字、修正後文字與差異。
+- 瀏覽器錄音會轉為單聲道 16kHz WAV，最長 60 秒；辨識後會依啟用的 `AgriculturalTerm` 修正，並同時回傳修正前文字、修正後文字與差異。
 
 ### 檔案儲存
 

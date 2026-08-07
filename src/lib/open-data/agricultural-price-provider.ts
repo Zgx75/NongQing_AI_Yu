@@ -1,2 +1,2 @@
 import { ConfigurableOpenDataProvider } from "./base-provider";
-export const agriculturalPriceProvider = new ConfigurableOpenDataProvider("agricultural-price", "農產品價格資料來源", "AGRICULTURAL_PRICE_API_BASE_URL", { prices: [] });
+export const agriculturalPriceProvider = new ConfigurableOpenDataProvider("agricultural-price", "Agricultural Price Data Source", "AGRICULTURAL_PRICE_API_BASE_URL", { prices: [] });

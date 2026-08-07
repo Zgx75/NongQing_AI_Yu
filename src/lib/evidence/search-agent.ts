@@ -42,21 +42,21 @@ async function directSearchSource(source: TrustedSourceInput, question: string) 
     })));
     return { results, warnings };
   } catch (error) {
-    warnings.push(`${source.name}：${error instanceof Error ? error.message : "讀取失敗"}`);
+    warnings.push(`${source.name}: ${error instanceof Error ? error.message : "Unable to read source"}`);
     return { results: [] as EvidenceSearchResult[], warnings };
   }
 }
 
 async function searchWithTavily(question: string, sources: TrustedSourceInput[]): Promise<EvidenceSearchOutput> {
   const key = process.env.TAVILY_API_KEY;
-  if (!key) throw new Error("TAVILY_API_KEY 尚未設定");
+  if (!key) throw new Error("TAVILY_API_KEY is not configured");
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
     signal: AbortSignal.timeout(12_000),
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ api_key: key, query: question, search_depth: "advanced", max_results: 10, include_domains: [...new Set(sources.map(source => source.domain))], include_answer: false, include_raw_content: false }),
   });
-  if (!response.ok) throw new Error(`搜尋服務回應 ${response.status}`);
+  if (!response.ok) throw new Error(`Search service returned HTTP ${response.status}`);
   const payload = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; score?: number }> };
   const results = (payload.results ?? []).flatMap(item => {
     if (!item.url) return [];
@@ -73,7 +73,7 @@ export async function searchTrustedWeb(question: string, sources: TrustedSourceI
     try { return await searchWithTavily(question, sources); }
     catch (error) {
       const fallback = await directSearch(question, sources);
-      fallback.warnings.unshift(`搜尋服務暫時無法使用，已改為直接搜尋核准頁面：${error instanceof Error ? error.message : "未知錯誤"}`);
+      fallback.warnings.unshift(`The search service is temporarily unavailable, so approved pages were searched directly: ${error instanceof Error ? error.message : "Unknown error"}`);
       return fallback;
     }
   }

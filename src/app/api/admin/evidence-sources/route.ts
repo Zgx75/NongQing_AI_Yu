@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const input = schema.parse(await parseJson(request));
     const url = parsePublicWebUrl(input.url);
     const normalizedUrl = url.toString();
-    if (await db.trustedWebSource.findUnique({ where: { url: normalizedUrl } })) throw new AppError("SOURCE_EXISTS", "這個網址已經在可信來源清單中。", 409);
+    if (await db.trustedWebSource.findUnique({ where: { url: normalizedUrl } })) throw new AppError("SOURCE_EXISTS", "This URL is already in the trusted source list.", 409);
     const source = await db.trustedWebSource.create({ data: { ...input, url: normalizedUrl, domain: url.hostname.toLowerCase(), createdById: user.id } });
     await audit({ userId: user.id, action: "CREATE", entityType: "TrustedWebSource", entityId: source.id, after: source });
     return ok(source, 201);

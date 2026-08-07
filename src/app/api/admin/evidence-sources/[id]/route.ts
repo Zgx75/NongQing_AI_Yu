@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const user = await requireAdmin();
     const id = (await params).id;
     const before = await db.trustedWebSource.findUnique({ where: { id } });
-    if (!before) throw new AppError("NOT_FOUND", "找不到可信網站來源。", 404);
+    if (!before) throw new AppError("NOT_FOUND", "Trusted website source not found.", 404);
     const source = await db.trustedWebSource.update({ where: { id }, data: updateSchema.parse(await parseJson(request)) });
     await audit({ userId: user.id, action: "UPDATE", entityType: "TrustedWebSource", entityId: id, before, after: source });
     return ok(source);
@@ -23,7 +23,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     const user = await requireAdmin();
     const id = (await params).id;
     const before = await db.trustedWebSource.findUnique({ where: { id } });
-    if (!before) throw new AppError("NOT_FOUND", "找不到可信網站來源。", 404);
+    if (!before) throw new AppError("NOT_FOUND", "Trusted website source not found.", 404);
     await db.trustedWebSource.delete({ where: { id } });
     await audit({ userId: user.id, action: "DELETE", entityType: "TrustedWebSource", entityId: id, before });
     return ok({ id });

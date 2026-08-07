@@ -5,7 +5,7 @@ export class ConfigurableOpenDataProvider<TQuery extends object, TResult> implem
   constructor(public providerName: string, private sourceName: string, private envKey: string, private mockData: TResult) {}
   async fetch(query: TQuery): Promise<OpenDataResult<TResult, TQuery>> {
     const isMock = process.env.OPEN_DATA_MODE !== "live"; const url = process.env[this.envKey];
-    if (!isMock && !url) return { success: false, provider: this.providerName, sourceName: this.sourceName, query, data: null, fetchedAt: new Date().toISOString(), errorMessage: "資料暫時無法取得：尚未設定資料來源。", isMock: false };
+    if (!isMock && !url) return { success: false, provider: this.providerName, sourceName: this.sourceName, query, data: null, fetchedAt: new Date().toISOString(), errorMessage: "Data is unavailable because the data source is not configured.", isMock: false };
     try {
       const result = await cached(`${this.providerName}:${JSON.stringify(query)}`, 15 * 60_000, async () => {
         if (isMock) return this.mockData;
@@ -13,6 +13,6 @@ export class ConfigurableOpenDataProvider<TQuery extends object, TResult> implem
         const response = await fetch(endpoint); if (!response.ok) throw new Error("upstream unavailable"); return await response.json() as TResult;
       });
       return { success: true, provider: this.providerName, sourceName: this.sourceName, query, data: result.data, fetchedAt: new Date().toISOString(), errorMessage: null, isMock, cacheHit: result.cacheHit };
-    } catch { return { success: false, provider: this.providerName, sourceName: this.sourceName, query, data: null, fetchedAt: new Date().toISOString(), errorMessage: "資料暫時無法取得。", isMock }; }
+    } catch { return { success: false, provider: this.providerName, sourceName: this.sourceName, query, data: null, fetchedAt: new Date().toISOString(), errorMessage: "Data is temporarily unavailable.", isMock }; }
   }
 }

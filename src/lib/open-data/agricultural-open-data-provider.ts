@@ -1,2 +1,2 @@
 import { ConfigurableOpenDataProvider } from "./base-provider";
-export const agriculturalOpenDataProvider = new ConfigurableOpenDataProvider("agricultural-open-data", "農業開放資料來源", "AGRICULTURAL_OPEN_DATA_API_BASE_URL", { entries: [] });
+export const agriculturalOpenDataProvider = new ConfigurableOpenDataProvider("agricultural-open-data", "Agricultural Open Data Source", "AGRICULTURAL_OPEN_DATA_API_BASE_URL", { entries: [] });

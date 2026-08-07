@@ -24,6 +24,6 @@ describe("農業問答安全規則", () => {
   it("高風險用藥問題沒有主管機關來源時不提供操作結論", async () => {
     const answer = await answerAgriculturalQuestion("農藥要稀釋幾倍？", [result()]);
     expect(answer.mode).toBe("safety-blocked");
-    expect(answer.answer).toContain("不提供確定用量");
+    expect(answer.answer).toContain("will not provide a definitive dosage");
   });
 });

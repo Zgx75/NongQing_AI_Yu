@@ -1,2 +1,2 @@
 import { ConfigurableOpenDataProvider } from "./base-provider";
-export const traceabilityProvider = new ConfigurableOpenDataProvider("traceability", "產銷履歷資料來源", "TRACEABILITY_API_BASE_URL", { records: [] });
+export const traceabilityProvider = new ConfigurableOpenDataProvider("traceability", "Traceability Data Source", "TRACEABILITY_API_BASE_URL", { records: [] });

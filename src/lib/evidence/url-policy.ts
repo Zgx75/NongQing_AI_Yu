@@ -20,23 +20,23 @@ function isPrivateIp(address: string) {
 export function parsePublicWebUrl(input: string) {
   let url: URL;
   try { url = new URL(input.trim()); }
-  catch { throw new AppError("INVALID_SOURCE_URL", "請輸入完整的 http 或 https 網址。", 422); }
-  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new AppError("INVALID_SOURCE_URL", "僅接受不含帳號密碼的 http 或 https 網址。", 422);
+  catch { throw new AppError("INVALID_SOURCE_URL", "Enter a complete HTTP or HTTPS URL.", 422); }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new AppError("INVALID_SOURCE_URL", "Only HTTP or HTTPS URLs without embedded credentials are accepted.", 422);
   const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".local") || isPrivateIp(host)) throw new AppError("UNSAFE_SOURCE_URL", "不能使用本機或私人網路網址。", 422);
+  if (host === "localhost" || host.endsWith(".local") || isPrivateIp(host)) throw new AppError("UNSAFE_SOURCE_URL", "Local and private-network URLs are not allowed.", 422);
   url.hash = "";
   return url;
 }
 
 async function assertPublicDns(url: URL) {
   if (isIP(url.hostname)) {
-    if (isPrivateIp(url.hostname)) throw new AppError("UNSAFE_SOURCE_URL", "來源網址解析到私人網路。", 422);
+    if (isPrivateIp(url.hostname)) throw new AppError("UNSAFE_SOURCE_URL", "The source URL resolves to a private network.", 422);
     return;
   }
   let addresses;
   try { addresses = await lookup(url.hostname, { all: true, verbatim: true }); }
-  catch { throw new AppError("SOURCE_UNREACHABLE", `無法解析來源網域：${url.hostname}`, 502); }
-  if (!addresses.length || addresses.some(item => isPrivateIp(item.address))) throw new AppError("UNSAFE_SOURCE_URL", "來源網址解析到私人網路。", 422);
+  catch { throw new AppError("SOURCE_UNREACHABLE", `Unable to resolve the source domain: ${url.hostname}`, 502); }
+  if (!addresses.length || addresses.some(item => isPrivateIp(item.address))) throw new AppError("UNSAFE_SOURCE_URL", "The source URL resolves to a private network.", 422);
 }
 
 export function normalizeComparableUrl(input: string) {
@@ -56,7 +56,7 @@ export function isWithinSource(candidate: string, source: { url: string; domain:
 async function fetchPublicPageAttempt(input: string, allowedDomain: string) {
   let url = parsePublicWebUrl(input);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-    if (url.hostname.toLowerCase() !== allowedDomain.toLowerCase()) throw new AppError("SOURCE_REDIRECT_BLOCKED", "來源重新導向到未核准的網域。", 502);
+    if (url.hostname.toLowerCase() !== allowedDomain.toLowerCase()) throw new AppError("SOURCE_REDIRECT_BLOCKED", "The source redirected to an unapproved domain.", 502);
     await assertPublicDns(url);
     const response = await fetch(url, {
       redirect: "manual",
@@ -65,20 +65,20 @@ async function fetchPublicPageAttempt(input: string, allowedDomain: string) {
     });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("location");
-      if (!location) throw new AppError("SOURCE_FETCH_FAILED", "來源回傳無效的重新導向。", 502);
+      if (!location) throw new AppError("SOURCE_FETCH_FAILED", "The source returned an invalid redirect.", 502);
       url = new URL(location, url);
       continue;
     }
-    if (!response.ok) throw new AppError("SOURCE_FETCH_FAILED", `來源回應 ${response.status}。`, 502);
+    if (!response.ok) throw new AppError("SOURCE_FETCH_FAILED", `The source returned HTTP ${response.status}.`, 502);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml") && !contentType.includes("text/plain")) throw new AppError("UNSUPPORTED_SOURCE", "此來源不是可搜尋的網頁文字；PDF 請改用搜尋服務模式。", 422);
+    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml") && !contentType.includes("text/plain")) throw new AppError("UNSUPPORTED_SOURCE", "This source is not searchable webpage text. Use search-service mode for PDFs.", 422);
     const length = Number(response.headers.get("content-length") || 0);
-    if (length > MAX_RESPONSE_BYTES) throw new AppError("SOURCE_TOO_LARGE", "來源頁面超過大小限制。", 422);
+    if (length > MAX_RESPONSE_BYTES) throw new AppError("SOURCE_TOO_LARGE", "The source page exceeds the size limit.", 422);
     const buffer = await response.arrayBuffer();
-    if (buffer.byteLength > MAX_RESPONSE_BYTES) throw new AppError("SOURCE_TOO_LARGE", "來源頁面超過大小限制。", 422);
+    if (buffer.byteLength > MAX_RESPONSE_BYTES) throw new AppError("SOURCE_TOO_LARGE", "The source page exceeds the size limit.", 422);
     return { url: url.toString(), html: new TextDecoder().decode(buffer), contentType };
   }
-  throw new AppError("SOURCE_REDIRECT_LIMIT", "來源重新導向次數過多。", 502);
+  throw new AppError("SOURCE_REDIRECT_LIMIT", "The source redirected too many times.", 502);
 }
 
 export async function fetchPublicPage(input: string, allowedDomain: string) {
@@ -94,7 +94,7 @@ export async function fetchPublicPage(input: string, allowedDomain: string) {
       }
     }
     const timedOut = lastError instanceof Error && (lastError.name === "TimeoutError" || /aborted|timeout/i.test(lastError.message));
-    throw new AppError(timedOut ? "SOURCE_TIMEOUT" : "SOURCE_FETCH_FAILED", timedOut ? "來源網站回應較慢，重試後仍逾時，請稍後再試。" : "來源網站暫時無法連線，請稍後再試。", 502);
+    throw new AppError(timedOut ? "SOURCE_TIMEOUT" : "SOURCE_FETCH_FAILED", timedOut ? "The source website remained too slow after retrying. Please try again later." : "The source website is temporarily unreachable. Please try again later.", 502);
   });
   return result.data;
 }

@@ -5,7 +5,7 @@ function writeAscii(view: DataView, offset: number, value: string) {
 }
 
 export function encodeMonoPcm16Wav(channels: Float32Array[], inputSampleRate: number, outputSampleRate = TARGET_SAMPLE_RATE) {
-  if (!channels.length || !channels[0]?.length || inputSampleRate <= 0 || outputSampleRate <= 0) throw new Error("錄音內容是空的。");
+  if (!channels.length || !channels[0]?.length || inputSampleRate <= 0 || outputSampleRate <= 0) throw new Error("The recording is empty.");
   const sourceLength = Math.min(...channels.map(channel => channel.length));
   const sampleCount = Math.max(1, Math.floor(sourceLength * outputSampleRate / inputSampleRate));
   const buffer = new ArrayBuffer(44 + sampleCount * 2);
@@ -41,7 +41,7 @@ export function encodeMonoPcm16Wav(channels: Float32Array[], inputSampleRate: nu
 
 export async function recordedAudioToWav(recording: Blob) {
   const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) throw new Error("此瀏覽器無法轉換錄音格式。");
+  if (!AudioContextClass) throw new Error("This browser cannot convert the recording format.");
   const context = new AudioContextClass();
   try {
     const decoded = await context.decodeAudioData(await recording.arrayBuffer());

@@ -7,7 +7,7 @@ import type { StorageProvider } from "./provider";
 function settings() {
   const endpoint = process.env.S3_ENDPOINT, region = process.env.S3_REGION, bucket = process.env.S3_BUCKET;
   const accessKeyId = process.env.S3_ACCESS_KEY, secretAccessKey = process.env.S3_SECRET_KEY;
-  if (!endpoint || !region || !bucket || !accessKeyId || !secretAccessKey) throw new AppError("STORAGE_NOT_CONFIGURED", "S3 相容儲存尚未完成環境變數設定。", 503);
+  if (!endpoint || !region || !bucket || !accessKeyId || !secretAccessKey) throw new AppError("STORAGE_NOT_CONFIGURED", "S3-compatible storage environment variables are not fully configured.", 503);
   return { bucket, client: new S3Client({ endpoint, region, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } }) };
 }
 

@@ -8,5 +8,5 @@ export function rateLimit(key: string, limit = 30, windowMs = 60_000) {
   const hit = hits.get(key);
   if (!hit || hit.resetAt <= now) { hits.set(key, { count: 1, resetAt: now + windowMs }); return; }
   hit.count++;
-  if (hit.count > limit) throw new AppError("RATE_LIMITED", "操作太頻繁，請稍後再試。", 429);
+  if (hit.count > limit) throw new AppError("RATE_LIMITED", "Too many requests. Please try again later.", 429);
 }

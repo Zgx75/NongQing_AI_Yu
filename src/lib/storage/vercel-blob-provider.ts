@@ -5,7 +5,7 @@ import { AppError } from "@/lib/api";
 import type { StorageProvider } from "./provider";
 
 function assertConfigured() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) throw new AppError("STORAGE_NOT_CONFIGURED", "Vercel Blob 尚未連結至此專案。", 503);
+  if (!process.env.BLOB_READ_WRITE_TOKEN) throw new AppError("STORAGE_NOT_CONFIGURED", "Vercel Blob is not connected to this project.", 503);
 }
 
 export class VercelBlobStorageProvider implements StorageProvider {

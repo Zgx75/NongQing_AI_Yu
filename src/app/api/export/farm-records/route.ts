@@ -1,3 +1,17 @@
-import { db } from "@/lib/db"; import { fail, AppError } from "@/lib/api"; import { requireUser } from "@/lib/auth/require-user"; import { createChinesePdf } from "@/lib/export/pdf";
-const csvCell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-export async function GET(request: Request) { try { const user = await requireUser(); const q = new URL(request.url).searchParams; const format = q.get("format") || "csv"; const id = q.get("id"); const records = await db.farmRecord.findMany({ where: { ...(id ? { id } : {}), farm: user.role === "ADMIN" ? {} : { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] } }, include: { farm: true, plot: true, creator: true, evidence: true } }); if (id && !records.length) throw new AppError("NOT_FOUND", "找不到可匯出的紀錄。", 404); if (format === "pdf") { const record = records[0]; if (!record) throw new AppError("NOT_FOUND", "沒有可匯出的紀錄。", 404); const pending = JSON.parse(record.structuredDataJson).missingFields?.join("、") || "無"; const pdf = createChinesePdf("農場日誌", [`農場：${record.farm.name}`, `建立時間：${record.createdAt.toLocaleString("zh-TW")}`, `文件狀態：${record.status}`, `農務內容：${record.content || record.rawInput}`, `待確認項目：${pending}`, `外部資料來源：${record.evidence.map(e => e.sourceName).join("、") || "無"}`, "AI 協助整理，需人工確認"]); return new Response(pdf, { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="farm-record-${record.id}.pdf"` } }); } const rows = [["日期","農場","田區","農務動作","內容","狀態"], ...records.map(r => [r.recordDate?.toISOString().slice(0,10) || "", r.farm.name, r.plot?.name || "", r.actionType || "", r.content || r.rawInput, r.status])]; return new Response("\ufeff" + rows.map(row => row.map(csvCell).join(",")).join("\r\n"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": "attachment; filename=farm-records.csv" } }); } catch (e) { return fail(e); } }
+import { db } from "@/lib/db"; import { requireUser } from "@/lib/auth/require-user"; import { AppError, fail } from "@/lib/api"; import { createChinesePdf } from "@/lib/export/pdf";
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+export async function GET(request: Request) {
+  try {
+    const user = await requireUser(); const query = new URL(request.url).searchParams; const format = query.get("format") || "csv"; const id = query.get("id");
+    const records = await db.farmRecord.findMany({ where: { ...(id ? { id } : {}), farm: user.role === "ADMIN" ? {} : { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] } }, include: { farm: true, plot: true, creator: true, evidence: true } });
+    if (id && !records.length) throw new AppError("NOT_FOUND", "No exportable record was found.", 404);
+    if (format === "pdf") {
+      const record = records[0]; if (!record) throw new AppError("NOT_FOUND", "There are no records to export.", 404);
+      const pending = JSON.parse(record.structuredDataJson).missingFields?.join(", ") || "None";
+      const pdf = createChinesePdf("Farm Log", [`Farm: ${record.farm.name}`, `Created: ${record.createdAt.toLocaleString("en-US")}`, `Document status: ${record.status}`, `Farm activity: ${record.content || record.rawInput}`, `Items to confirm: ${pending}`, `External sources: ${record.evidence.map(evidence => evidence.sourceName).join(", ") || "None"}`, "Organized with AI assistance; human review is required."]);
+      return new Response(pdf, { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="farm-record-${record.id}.pdf"` } });
+    }
+    const rows = [["Date", "Farm", "Plot", "Farm activity", "Content", "Status"], ...records.map(record => [record.recordDate?.toISOString().slice(0, 10) || "", record.farm.name, record.plot?.name || "", record.actionType || "", record.content || record.rawInput, record.status])];
+    return new Response("\ufeff" + rows.map(row => row.map(csvCell).join(",")).join("\r\n"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": "attachment; filename=farm-records.csv" } });
+  } catch (error) { return fail(error); }
+}

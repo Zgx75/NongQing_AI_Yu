@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bestExcerpts, parseHtmlDocument } from "@/lib/evidence/html-search";
-import { sourceSearchEntryUrl, sourceSearchKeyword } from "@/lib/evidence/source-search";
+import { sourceSearchEntryUrl, sourceSearchKeyword, sourceSpecificResultUrls } from "@/lib/evidence/source-search";
 import { isWithinSource, parsePublicWebUrl } from "@/lib/evidence/url-policy";
 
 describe("可信網站搜尋", () => {
@@ -33,5 +33,20 @@ describe("可信網站搜尋", () => {
     expect(url.searchParams.get("type")).toBe("0");
     expect(url.searchParams.get("keyword")).toBe("番茄");
     expect(sourceSearchKeyword("如何改善土壤酸化？")).toBe("土壤");
+  });
+
+  it("將農藥網作物與病害名稱轉成官方登記用藥查詢", () => {
+    const source = { url: "https://pesticide.aphia.gov.tw/", domain: "pesticide.aphia.gov.tw", searchScope: "SITE" };
+    expect(sourceSearchEntryUrl(source, "番茄晚疫病")).toBe("https://pesticide.aphia.gov.tw/information/Query/Bug");
+    const html = `<script id="farmListData" type="application/json">[{"Farmid":"C09","DisplayName":"果菜類","Children":[{"Farmid":"C090903","DisplayName":"番茄"}]}]</script><script id="bugListData" type="application/json">[{"Instid":"B35","DisplayName":"晚疫病"}]</script>`;
+    const url = new URL(sourceSpecificResultUrls(source, "番茄晚疫病可以使用哪些農藥", html)[0]);
+    expect(url.pathname).toBe("/information/Query/BugFarmUserange");
+    expect(url.searchParams.get("farm")).toBe("C090903");
+    expect(url.searchParams.get("bug")).toBe("B35");
+  });
+
+  it("將用藥表格整列保留為佐證段落", () => {
+    const document = parseHtmlDocument(`<table><tr><th>作物</th><th>病害</th><th>普通名稱</th></tr><tr><td>番茄</td><td>晚疫病</td><td>核准藥劑甲</td><td>稀釋倍數 2500</td><td>安全採收期 7 天</td></tr></table>`, "https://example.org/pesticide");
+    expect(document.blocks).toContain("番茄 晚疫病 核准藥劑甲 稀釋倍數 2500 安全採收期 7 天");
   });
 });

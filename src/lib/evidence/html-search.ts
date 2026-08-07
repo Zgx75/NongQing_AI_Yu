@@ -18,8 +18,8 @@ function clean(value: string) {
 export function parseHtmlDocument(html: string, pageUrl: string) {
   const withoutNoise = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ").replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ");
   const title = clean(withoutNoise.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || withoutNoise.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || new URL(pageUrl).hostname);
-  const blocks = [...withoutNoise.matchAll(/<(?:h[1-6]|p|li|td|th|blockquote|figcaption)\b[^>]*>([\s\S]*?)<\/(?:h[1-6]|p|li|td|th|blockquote|figcaption)>/gi)]
-    .map(match => clean(match[1]))
+  const blocks = [...withoutNoise.matchAll(/<(h[1-6]|p|li|tr|td|th|blockquote|figcaption)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
+    .map(match => clean(match[2]))
     .filter(value => value.length >= 18 && value.length <= 1_500);
   const links = [...withoutNoise.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].flatMap(match => {
     try { return [{ url: new URL(match[1], pageUrl).toString(), label: clean(match[2]) }]; } catch { return []; }

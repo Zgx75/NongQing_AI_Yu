@@ -1,6 +1,6 @@
 import { fetchPublicPage, isWithinSource } from "./url-policy";
 import { bestExcerpts, parseHtmlDocument, queryTerms, relevanceScore } from "./html-search";
-import { sourceSearchEntryUrl } from "./source-search";
+import { sourceSearchEntryUrl, sourceSpecificResultUrls } from "./source-search";
 
 export type TrustedSourceInput = { id: string; name: string; url: string; domain: string; description: string; searchScope: string };
 export type EvidenceSearchResult = { sourceId: string; sourceName: string; title: string; url: string; excerpt: string; relevanceScore: number; provider: string };
@@ -19,14 +19,16 @@ async function directSearchSource(source: TrustedSourceInput, question: string) 
     const pages = [landing];
     if (source.searchScope === "SITE") {
       const terms = queryTerms(question);
-      const candidates = landing.document.links
+      const specificUrls = sourceSpecificResultUrls(source, question, landing.response.html);
+      const candidates = specificUrls.length ? specificUrls : landing.document.links
         .filter(link => isWithinSource(link.url, source) && link.url !== landing.response.url)
         .map(link => ({ ...link, score: relevanceScore(`${link.label} ${link.url}`, terms) }))
         .filter(link => link.score > 0)
         .sort((a, b) => b.score - a.score)
         .filter((link, index, list) => list.findIndex(other => other.url === link.url) === index)
-        .slice(0, 4);
-      const settled = await Promise.allSettled(candidates.map(link => searchPage(link.url, source, question)));
+        .slice(0, 4)
+        .map(link => link.url);
+      const settled = await Promise.allSettled(candidates.map(url => searchPage(url, source, question)));
       for (const result of settled) if (result.status === "fulfilled") pages.push(result.value);
     }
     const results = pages.flatMap(page => page.excerpts.map(excerpt => ({

@@ -5,7 +5,7 @@ export const generateBrandCopyPrompt = (input: unknown) => `You are an agricultu
 PRODUCT:
 - Use only the supplied crop or product, farming method, place of origin, business philosophy, product features, sustainability practices, certifications, and confirmedStyleElements.
 - Structure narrative copy as origin -> philosophy -> product features -> emotional narrative -> call to action.
-- confirmedStyleElements are verified facts selected and attested by the user. You may use Natural farming, Pesticide-free cultivation, or Three generations of family farming only when the exact idea appears in confirmedStyleElements or another supplied profile fact.
+- confirmedStyleElements are open-ended verified facts entered or selected and attested by the user; use any supplied element when relevant. Natural farming, Pesticide-free cultivation, and Three generations of family farming are examples, not an exhaustive list, and may be used only when the exact idea appears in confirmedStyleElements or another supplied profile fact.
 
 PROMOTION:
 - Adapt the draft to the requested content type, target audience, tone, and length.

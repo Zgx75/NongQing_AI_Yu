@@ -14,7 +14,7 @@ type GenerationSettings = { type: string; targetAudience: string; tone: string; 
 const tones = [{ value: "樸實真誠", label: "Simple and sincere" }, { value: "溫暖故事", label: "Warm storytelling" }, { value: "專業可信", label: "Professional and trustworthy" }, { value: "年輕生活感", label: "Young lifestyle" }, { value: "送禮質感", label: "Premium gifting" }, { value: "永續環保", label: "Sustainable" }];
 const contentTypes = [{ value: "品牌故事", label: "Brand story" }, { value: "商品介紹", label: "Product description" }, { value: "商品標語", label: "Product slogan" }, { value: "Facebook 貼文", label: "Facebook post" }, { value: "Instagram 貼文", label: "Instagram post" }, { value: "顧客問答", label: "Customer Q&A" }, { value: "出貨說明", label: "Shipping notice" }];
 const audiences = [{ value: "家庭消費者", label: "Households" }, { value: "年輕族群", label: "Young adults" }, { value: "銀髮族", label: "Older adults" }, { value: "送禮需求", label: "Gift buyers" }, { value: "餐廳與商家", label: "Restaurants and businesses" }];
-const storyElements = [{ value: "NATURAL_FARMING", label: "Natural farming" }, { value: "PESTICIDE_FREE", label: "Pesticide-free cultivation" }, { value: "THREE_GENERATIONS", label: "Three generations of family farming" }];
+const suggestedStoryElements = [{ value: "NATURAL_FARMING", label: "Natural farming" }, { value: "PESTICIDE_FREE", label: "Pesticide-free cultivation" }, { value: "THREE_GENERATIONS", label: "Three generations of family farming" }];
 
 export function BrandStudio({ farms }: { farms: Farm[] }) {
   const [farmId, setFarmId] = useState(farms[0]?.id || "");
@@ -26,10 +26,15 @@ export function BrandStudio({ farms }: { farms: Farm[] }) {
 
   async function submit(formData: FormData) {
     setBusy(true); setError("");
+    const customStoryElements = String(formData.get("customStoryElements") || "")
+      .split(/[\n,]/)
+      .map(item => item.trim())
+      .filter(Boolean);
+    const selectedStoryElements = [...new Set([...formData.getAll("styleElements").map(String), ...customStoryElements])];
     const selectedSettings = {
       type: String(formData.get("type")), targetAudience: String(formData.get("targetAudience")),
       tone: String(formData.get("tone")), length: String(formData.get("length")),
-      styleElements: formData.getAll("styleElements").map(String),
+      styleElements: selectedStoryElements,
     };
     const profile = {
       brandName: formData.get("brandName"), crop: formData.get("crop"), origin: formData.get("origin"),
@@ -67,7 +72,7 @@ export function BrandStudio({ farms }: { farms: Farm[] }) {
         <label><span className="label">Farm</span><select className="field" value={farmId} onChange={event => { setFarmId(event.target.value); setResult(null); setSettings(null); }}>{farms.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <section className="rounded-xl border border-[#b9cbb9] bg-[#f3f7ef] p-4"><h3 className="text-lg font-black text-[#315c3b]">Product — verified brand facts</h3><p className="mb-4 text-sm text-stone-600">These facts support the origin–philosophy–emotional narrative.</p>
           <div className="space-y-4"><label><span className="label">Primary crop or product</span><input className="field" name="crop" defaultValue={farm?.primaryCrops.join(", ") || ""}/></label>{fields.map(([name, label]) => <label className="block" key={name}><span className="label">{label}</span><input className="field" name={name} defaultValue={farm?.brandProfile?.[name] || ""} required={name === "brandName"}/></label>)}<label className="block"><span className="label">Brand story notes</span><textarea className="field" name="storyMaterials" rows={4} defaultValue={farm?.brandProfile?.storyMaterials || ""}/></label></div>
-          <fieldset className="mt-4"><legend className="label">Selectable story elements</legend><p className="mb-2 text-sm text-amber-900">Select only statements that are true and can be substantiated.</p><div className="space-y-2">{storyElements.map(item => <label className="flex gap-3 rounded-lg bg-white p-3" key={item.value}><input className="size-5" type="checkbox" name="styleElements" value={item.value}/><span>{item.label}</span></label>)}</div></fieldset>
+          <fieldset className="mt-4"><legend className="label">Brand story elements</legend><p className="mb-2 text-sm text-amber-900">Choose a suggestion or add any other true, substantiated brand facts. The suggestions are examples, not a fixed list.</p><div className="space-y-2">{suggestedStoryElements.map(item => <label className="flex gap-3 rounded-lg bg-white p-3" key={item.value}><input className="size-5" type="checkbox" name="styleElements" value={item.value}/><span>{item.label}</span></label>)}</div><label className="mt-3 block"><span className="label">Custom story elements</span><textarea className="field" name="customStoryElements" rows={3} placeholder={"Examples: mountain spring irrigation\nFamily-run farm\nHand-picked and sun-dried"}/><span className="help">Enter one item per line, or separate items with commas.</span></label></fieldset>
           <label className="mt-3 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3"><input className="size-5" type="checkbox" name="styleElementsConfirmed" required/><span className="text-sm font-bold">I confirm that any selected story elements are accurate and supported by my farm information.</span></label>
         </section>
         <section className="rounded-xl border p-4"><h3 className="text-lg font-black text-[#315c3b]">Promotion and Place — audience and channel</h3><p className="mb-4 text-sm text-stone-600">Choose promotional copy or e-commerce customer Q&A and shipping notices.</p><div className="grid gap-3 sm:grid-cols-2">

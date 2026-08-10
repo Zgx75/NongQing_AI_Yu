@@ -9,15 +9,16 @@ describe("Marketing Mix brand generation", () => {
     expect(prompt).toContain("PRODUCT:"); expect(prompt).toContain("PROMOTION:"); expect(prompt).toContain("PLACE:");
     expect(prompt).toContain("origin -> philosophy -> product features -> emotional narrative -> call to action");
     expect(prompt).toContain("confirmedStyleElements");
+    expect(prompt).toContain("examples, not an exhaustive list");
   });
 
-  it("uses a user-confirmed selectable story element as a verified fact", async () => {
+  it("uses a user-confirmed custom story element as a verified fact", async () => {
     const result = await new MockAIProvider().generateBrandCopy({
       profile: { brandName: "Test Farm", crop: "Tea", origin: "Nantou" },
       type: "Brand story", targetAudience: "Households", tone: "Simple and sincere", length: "Medium",
-      confirmedStyleElements: ["Pesticide-free cultivation / 無農藥栽培"],
+      confirmedStyleElements: ["Mountain spring irrigation"],
     });
-    expect(result.usedFacts).toContain("Pesticide-free cultivation / 無農藥栽培");
-    expect(result.body).toContain("Pesticide-free cultivation");
+    expect(result.usedFacts).toContain("Mountain spring irrigation");
+    expect(result.body).toContain("Mountain spring irrigation");
   });
 });

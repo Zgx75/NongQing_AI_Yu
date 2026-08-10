@@ -48,7 +48,7 @@ export class MockAIProvider implements AIProvider {
     this.raw = JSON.stringify(result); return generatedDocumentSchema.parse(result);
   }
   async generateBrandCopy(input: GenerateBrandCopyInput) {
-    const facts = values(input.profile);
+    const facts = [...values(input.profile), ...(input.confirmedStyleElements || [])];
     const brand = String(input.profile.brandName || "Farm Goods");
     const result = { title: `${brand}: bringing the care of the land to your home`, body: `${facts.join(", ")}. Every story begins with facts confirmed by the farmer.`, callToAction: "Contact us to learn about this season's products.", hashtags: ["TaiwanAgriculture", "FarmStory", brand.replace(/\s/g, "")], pendingItems: [], usedFacts: facts, disclaimer: "This content was organized with AI assistance and requires human review." };
     const invalid = validateBrandClaims(`${result.title}${result.body}`, facts); if (invalid.length) throw new Error(`Unsupported claims are not allowed: ${invalid.join(", ")}`);

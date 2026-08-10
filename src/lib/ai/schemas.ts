@@ -23,4 +23,4 @@ export type GeneratedBrandCopy = z.infer<typeof generatedBrandCopySchema>;
 export type ExtractFarmRecordInput = { text: string; farmId?: string; plotId?: string; today?: string };
 export type GenerateFarmJournalInput = { confirmedData: Record<string, unknown>; weather?: string | null };
 export type GenerateTraceabilityInput = { confirmedData: Record<string, unknown> };
-export type GenerateBrandCopyInput = { profile: Record<string, unknown>; type: string; targetAudience: string; tone: string; length: string };
+export type GenerateBrandCopyInput = { profile: Record<string, unknown>; type: string; targetAudience: string; tone: string; length: string; confirmedStyleElements?: string[] };

@@ -78,7 +78,7 @@ export function bestExcerpts(blocks: string[], question: string, limit = 2) {
   const terms = queryTerms(question);
   return blocks
     .map(text => ({ text, score: relevanceScore(text, terms) }))
-    .filter(item => item.score > 0 && isRelevantEvidence(item.text, question))
+    .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score || b.text.length - a.text.length)
     .slice(0, limit);
 }

@@ -57,4 +57,18 @@ describe("agricultural Q&A relevance guard", () => {
     expect(answer.mode).toBe("grounded-ai");
     expect(answer.citations).toHaveLength(1);
   });
+
+  it("uses a clearly labeled Gemini general-knowledge fallback when search finds no evidence", async () => {
+    vi.stubEnv("AI_PROVIDER", "gemini");
+    vi.stubEnv("GEMINI_API_KEY", "test-key");
+    vi.stubEnv("GEMINI_MODEL", "gemini-3.8-flash");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ answer: "This is a general agricultural answer." }) }] } }],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
+    const answer = await answerAgriculturalQuestion("How should I prepare a new vegetable bed?", []);
+    expect(answer.mode).toBe("general-ai");
+    expect(answer.provider).toContain(":general");
+    expect(answer.citations).toHaveLength(0);
+    expect(answer.disclaimer).toContain("general knowledge");
+  });
 });

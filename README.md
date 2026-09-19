@@ -104,7 +104,7 @@ OPEN_DATA_MODE=mock
 ```dotenv
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your-server-only-key
-GEMINI_MODEL=your-enabled-model-name
+GEMINI_MODEL=gemini-3.8-flash
 ```
 
 模型名稱完全由環境變數指定。Key 只在 route handler 使用，不會送到瀏覽器。provider 要求 JSON、以 Zod 驗證；失敗時只修復一次，第二次失敗會回傳可理解錯誤並保留安全的呼叫紀錄。

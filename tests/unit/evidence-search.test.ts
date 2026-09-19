@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bestExcerpts, parseHtmlDocument } from "@/lib/evidence/html-search";
-import { sourceSearchEntryUrl, sourceSearchKeyword, sourceSpecificResultUrls } from "@/lib/evidence/source-search";
+import { sourceSearchEntryUrl, sourceSearchEntryUrls, sourceSearchKeyword, sourceSearchKeywords, sourceSpecificResultUrls } from "@/lib/evidence/source-search";
 import { isWithinSource, parsePublicWebUrl } from "@/lib/evidence/url-policy";
 
 describe("可信網站搜尋", () => {
@@ -31,8 +31,23 @@ describe("可信網站搜尋", () => {
     expect(url.pathname).toBe("/knowledgebase.php");
     expect(url.searchParams.get("func")).toBe("0");
     expect(url.searchParams.get("type")).toBe("0");
-    expect(url.searchParams.get("keyword")).toBe("番茄");
-    expect(sourceSearchKeyword("如何改善土壤酸化？")).toBe("土壤");
+    expect(url.searchParams.get("keyword")).toBe("番茄結果期施肥");
+    expect(sourceSearchKeyword("如何改善土壤酸化？")).toBe("土壤酸化");
+  });
+
+  it("extracts crop and intent instead of searching generic question words", () => {
+    expect(sourceSearchKeywords("哪些肥料適合給茄子用")).toEqual(["茄子施肥", "茄子", "施肥"]);
+    const kmweb = sourceSearchEntryUrls({ url: "https://kmweb.moa.gov.tw/knowledgebase.php?func=0", domain: "kmweb.moa.gov.tw", searchScope: "SITE" }, "哪些肥料適合給茄子用");
+    expect(kmweb.map(value => new URL(value).searchParams.get("keyword"))).toEqual(["茄子施肥", "茄子", "施肥"]);
+  });
+
+  it("uses each official site's actual full-text search endpoint", () => {
+    const afa = sourceSearchEntryUrl({ url: "https://www.afa.gov.tw/index.php?code=list&ids=650", domain: "www.afa.gov.tw", searchScope: "SITE" }, "哪些肥料適合給茄子用");
+    expect(new URL(afa).searchParams.get("code")).toBe("search");
+    expect(new URL(afa).searchParams.get("keyword")).toBe("茄子施肥");
+    const aphia = sourceSearchEntryUrl({ url: "https://www.aphia.gov.tw/ws.php?id=4159", domain: "www.aphia.gov.tw", searchScope: "SITE" }, "番茄病蟲害防治");
+    expect(new URL(aphia).pathname).toBe("/search_wg_tran.php");
+    expect(new URL(aphia).searchParams.get("keyword_q")).toBe("番茄病蟲害");
   });
 
   it("將農藥網作物與病害名稱轉成官方登記用藥查詢", () => {

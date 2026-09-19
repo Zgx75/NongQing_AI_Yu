@@ -1,6 +1,6 @@
 import { fetchPublicPage, isWithinSource } from "./url-policy";
 import { bestExcerpts, parseHtmlDocument, queryTerms, relevanceScore } from "./html-search";
-import { sourceSearchEntryUrl, sourceSpecificResultUrls } from "./source-search";
+import { sourceSearchEntryUrls, sourceSpecificResultUrls } from "./source-search";
 
 export type TrustedSourceInput = { id: string; name: string; url: string; domain: string; description: string; searchScope: string };
 export type EvidenceSearchResult = { sourceId: string; sourceName: string; title: string; url: string; excerpt: string; relevanceScore: number; provider: string };
@@ -15,18 +15,21 @@ async function searchPage(url: string, source: TrustedSourceInput, question: str
 async function directSearchSource(source: TrustedSourceInput, question: string) {
   const warnings: string[] = [];
   try {
-    const landing = await searchPage(sourceSearchEntryUrl(source, question), source, question);
-    const pages = [landing];
+    const landingAttempts = await Promise.allSettled(sourceSearchEntryUrls(source, question).map(url => searchPage(url, source, question)));
+    const landings = landingAttempts.flatMap(result => result.status === "fulfilled" ? [result.value] : []);
+    if (!landings.length) throw new Error("All site-search queries failed");
+    const pages = [...landings];
     if (source.searchScope === "SITE") {
       const terms = queryTerms(question);
-      const specificUrls = sourceSpecificResultUrls(source, question, landing.response.html);
-      const candidates = specificUrls.length ? specificUrls : landing.document.links
-        .filter(link => isWithinSource(link.url, source) && link.url !== landing.response.url)
+      const specificUrls = landings.flatMap(landing => sourceSpecificResultUrls(source, question, landing.response.html));
+      const landingUrls = new Set(landings.map(landing => landing.response.url));
+      const candidates = specificUrls.length ? specificUrls : landings.flatMap(landing => landing.document.links)
+        .filter(link => isWithinSource(link.url, source) && !landingUrls.has(link.url))
         .map(link => ({ ...link, score: relevanceScore(`${link.label} ${link.url}`, terms) }))
         .filter(link => link.score > 0)
         .sort((a, b) => b.score - a.score)
         .filter((link, index, list) => list.findIndex(other => other.url === link.url) === index)
-        .slice(0, 4)
+        .slice(0, 8)
         .map(link => link.url);
       const settled = await Promise.allSettled(candidates.map(url => searchPage(url, source, question)));
       for (const result of settled) if (result.status === "fulfilled") pages.push(result.value);
@@ -39,7 +42,7 @@ async function directSearchSource(source: TrustedSourceInput, question: string) 
       excerpt: excerpt.text.slice(0, 900),
       relevanceScore: excerpt.score,
       provider: "trusted-web-direct",
-    })));
+    }))).filter((result, index, list) => list.findIndex(other => other.url === result.url && other.excerpt === result.excerpt) === index);
     return { results, warnings };
   } catch (error) {
     warnings.push(`${source.name}: ${error instanceof Error ? error.message : "Unable to read source"}`);

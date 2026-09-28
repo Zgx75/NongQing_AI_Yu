@@ -1,0 +1,20 @@
+[
+  {
+    "crop": "tea",
+    "title": "茶園合理化施肥",
+    "url": "https://kmweb.moa.gov.tw/redirect_files.php?id=10642",
+    "topics": ["施肥", "肥培", "營養", "葉片", "土壤", "採樣", "樹齡", "肥料", "肥力"]
+  },
+  {
+    "crop": "sweet_potato",
+    "title": "北部地區甘藷重要病害防治研究及管理技術",
+    "url": "https://kmweb.moa.gov.tw/redirect_files.php?id=668146&theme=knowledgebase",
+    "topics": ["病害", "病毒", "斑駁", "病徵", "種苗", "苗圃", "送驗", "基腐", "白絹", "黃化", "採樣"]
+  },
+  {
+    "crop": "banana",
+    "title": "優質香蕉供果園作業規範",
+    "url": "https://kmweb.moa.gov.tw/files/knowledge_discuss/41716/A02_1.pdf",
+    "topics": ["採收", "採後", "分梳", "分把", "選別", "分級", "乳汁", "包裝", "擦傷", "壓傷", "吸芽", "留芽", "記錄", "紀錄"]
+  }
+]

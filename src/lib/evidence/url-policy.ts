@@ -6,7 +6,7 @@ import { cached } from "@/lib/open-data/cache";
 const MAX_RESPONSE_BYTES = 1_500_000;
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 20_000;
-const PAGE_CACHE_TTL_MS = 5 * 60_000;
+const PAGE_CACHE_TTL_MS = 60 * 60_000;
 
 function isPrivateIp(address: string) {
   const value = address.toLowerCase();
@@ -83,18 +83,61 @@ async function fetchPublicPageAttempt(input: string, allowedDomain: string) {
 
 export async function fetchPublicPage(input: string, allowedDomain: string) {
   const normalized = parsePublicWebUrl(input).toString();
-  const result = await cached(`trusted-page:${normalized}`, PAGE_CACHE_TTL_MS, async () => {
+  const ttl = allowedDomain.toLowerCase() === "pesticide.aphia.gov.tw" ? 5 * 60_000 : PAGE_CACHE_TTL_MS;
+  const result = await cached(`trusted-page:${normalized}`, ttl, async () => {
     let lastError: unknown;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       try { return await fetchPublicPageAttempt(normalized, allowedDomain); }
       catch (error) {
-        if (error instanceof AppError) throw error;
+        const retryableHttp = error instanceof AppError && /HTTP (?:429|5\d\d)\b/u.test(error.message);
+        const retryableDns = error instanceof AppError && error.code === "SOURCE_UNREACHABLE";
+        if (error instanceof AppError && !retryableHttp && !retryableDns) throw error;
         lastError = error;
-        if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 400));
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
       }
     }
     const timedOut = lastError instanceof Error && (lastError.name === "TimeoutError" || /aborted|timeout/i.test(lastError.message));
     throw new AppError(timedOut ? "SOURCE_TIMEOUT" : "SOURCE_FETCH_FAILED", timedOut ? "The source website remained too slow after retrying. Please try again later." : "The source website is temporarily unreachable. Please try again later.", 502);
   });
   return result.data;
+}
+
+/** Reads a bounded PDF from an already approved source domain for hash verification. */
+export async function fetchPublicPdf(input: string, allowedDomain: string) {
+  const maxBytes = 8_000_000;
+  let url = parsePublicWebUrl(input);
+  for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
+    if (url.hostname.toLowerCase() !== allowedDomain.toLowerCase()) throw new AppError("SOURCE_REDIRECT_BLOCKED", "The PDF redirected to an unapproved domain.", 502);
+    await assertPublicDns(url);
+    const response = await fetch(url, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { accept: "application/pdf", "user-agent": "NongQingEvidenceAgent/1.0 (+https://nong-qing-ai-yu.vercel.app)" },
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get("location");
+      if (!location) throw new AppError("SOURCE_FETCH_FAILED", "The PDF returned an invalid redirect.", 502);
+      url = new URL(location, url);
+      continue;
+    }
+    if (!response.ok) throw new AppError("SOURCE_FETCH_FAILED", `The PDF returned HTTP ${response.status}.`, 502);
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (!contentType.includes("application/pdf") && !contentType.includes("application/octet-stream")) throw new AppError("UNSUPPORTED_SOURCE", "The approved URL no longer serves a PDF.", 422);
+    if (Number(response.headers.get("content-length") || 0) > maxBytes) throw new AppError("SOURCE_TOO_LARGE", "The PDF exceeds the size limit.", 422);
+    const reader = response.body?.getReader();
+    if (!reader) throw new AppError("SOURCE_FETCH_FAILED", "The PDF response is empty.", 502);
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) { await reader.cancel(); throw new AppError("SOURCE_TOO_LARGE", "The PDF exceeds the size limit.", 422); }
+      chunks.push(value);
+    }
+    const bytes = Buffer.concat(chunks, total);
+    if (bytes.subarray(0, 4).toString("ascii") !== "%PDF") throw new AppError("UNSUPPORTED_SOURCE", "The approved URL no longer serves a PDF.", 422);
+    return { url: url.toString(), bytes };
+  }
+  throw new AppError("SOURCE_REDIRECT_LIMIT", "The PDF redirected too many times.", 502);
 }

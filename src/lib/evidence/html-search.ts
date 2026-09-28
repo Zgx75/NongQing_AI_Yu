@@ -15,12 +15,33 @@ function clean(value: string) {
   return decodeEntities(value.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
 }
 
+function articleBodyBlocks(html: string) {
+  const start = /<div\b[^>]*class=["'][^"']*\barticlepara\b[^"']*["'][^>]*>/i.exec(html);
+  if (!start || start.index === undefined) return [];
+  const from = start.index + start[0].length;
+  let depth = 1;
+  let end = html.length;
+  for (const tag of html.slice(from).matchAll(/<\/?div\b[^>]*>/gi)) {
+    depth += tag[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) { end = from + (tag.index ?? 0); break; }
+  }
+  return html.slice(from, end)
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(?:p|section|h[1-6])>/gi, "\n")
+    .split(/\n+/)
+    .map(clean)
+    .flatMap(value => value.length <= 1_500 ? [value] : value.match(/.{1,1100}(?:[。；，,]|$)/gu) ?? [])
+    .filter(value => value.length >= 30 && value.length <= 1_500);
+}
+
 export function parseHtmlDocument(html: string, pageUrl: string) {
   const withoutNoise = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ").replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ");
   const title = clean(withoutNoise.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || withoutNoise.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || new URL(pageUrl).hostname);
-  const blocks = [...withoutNoise.matchAll(/<(h[1-6]|p|li|tr|td|th|blockquote|figcaption)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
+  const genericBlocks = [...withoutNoise.matchAll(/<(h[1-6]|p|li|tr|td|th|blockquote|figcaption)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
     .map(match => clean(match[2]))
     .filter(value => value.length >= 18 && value.length <= 1_500);
+  const articleBlocks = articleBodyBlocks(withoutNoise);
+  const blocks = articleBlocks.length ? articleBlocks : genericBlocks;
   const links = [...withoutNoise.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].flatMap(match => {
     try { return [{ url: new URL(match[1], pageUrl).toString(), label: clean(match[2]) }]; } catch { return []; }
   });
@@ -30,6 +51,16 @@ export function parseHtmlDocument(html: string, pageUrl: string) {
 export function queryTerms(question: string) {
   const chunks = question.toLowerCase().match(/[\p{Script=Han}]+|[a-z0-9]+/gu) ?? [];
   const terms = new Set<string>();
+  if (question.includes("溫濕度")) { terms.add("溫度"); terms.add("濕度"); }
+  if (question.includes("板結")) { terms.add("不透水層"); terms.add("硬實層"); }
+  if (question.includes("土壤檢測")) terms.add("土壤分析");
+  if (question.includes("幼嫩")) { terms.add("嫩葉"); terms.add("嫩芽"); }
+  if (question.includes("整地")) terms.add("深耕");
+  if (question.includes("作畦") || question.includes("畦高")) { terms.add("弧形畦"); terms.add("畦面高"); }
+  if (question.includes("殘株") || question.includes("殘蔓")) { terms.add("殘留莖葉"); terms.add("殘留藷塊"); }
+  if (question.includes("分梳")) terms.add("分把");
+  if (question.includes("乳汁") || question.includes("蕉乳")) { terms.add("去乳汁"); terms.add("蕉乳"); }
+  if (question.includes("風吹") || question.includes("支撐")) terms.add("防風支柱");
   for (const chunk of chunks) {
     if (/^[\p{Script=Han}]+$/u.test(chunk)) {
       const segments = chunk
@@ -74,7 +105,7 @@ export function isRelevantEvidence(text: string, question: string) {
   return matched.length >= 2 && coverage >= 0.2;
 }
 
-export function bestExcerpts(blocks: string[], question: string, limit = 2) {
+export function bestExcerpts(blocks: string[], question: string, limit = 3) {
   const terms = queryTerms(question);
   return blocks
     .map(text => ({ text, score: relevanceScore(text, terms) }))

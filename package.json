@@ -21,7 +21,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:production": "tsx prisma/seed-production.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
-    "evidence:add-source": "tsx scripts/add-trusted-source.ts"
+    "evidence:add-source": "tsx scripts/add-trusted-source.ts",
+    "evidence:build-pdf-index": "node scripts/build-official-pdf-index.mjs"
   },
   "prisma": { "seed": "tsx prisma/seed.ts" },
   "pnpm": { "overrides": { "sharp": "0.35.0", "postcss": "8.5.18" } },
@@ -52,6 +53,7 @@
     "eslint": "9.29.0",
     "eslint-config-next": "15.5.21",
     "jsdom": "26.1.0",
+    "pdfjs-dist": "6.3.289",
     "prisma": "6.10.1",
     "tailwindcss": "4.1.10",
     "@tailwindcss/postcss": "4.1.10",
